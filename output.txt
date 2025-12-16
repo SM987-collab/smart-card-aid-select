@@ -1,14 +1,11 @@
-PS C:\EP-DG\Sandeep_P> python main.py                                                                                                                                   
-🔹 Searching for smart card readers...
-Available readers:
-[0] HID Global OMNIKEY 3x21 Smart Card Reader 0
-[1] Windows Hello for Business 1
+PS C:\EP-DG\Sandeep_P> python main.py                                                                                                                          
+Running in SIMULATOR mode
+[SIMULATOR] Card connected
+ATR: 3B 90 11 00
 
-✅ Using reader: HID Global OMNIKEY 3x21 Smart Card Reader 0
-✅ Card connected
-ATR: 3B 9F 96 80 3F 87 82 80 31 E0 73 FE 21 1F 57 45 43 75 31 30 34 65 25
-
-➡️ Sending SELECT APDU: 00 A4 04 00 0C A0 00 00 08 15 03 09 90 02 03 08 02
-⬅️ Response Data: 
-⬅️ Status Words: SW1=0x90, SW2=0x0
-🎉 SUCCESS: Applet selected
+ Sending select command for AID : 00 A4 04 00 08 A0 00 00 00 03 00 00 00
+[SIMULATOR] APDU received: 00 A4 04 00 08 A0 00 00 00 03 00 00 00
+[SIMULATOR] AID selected
+ Response Data: 
+ Status Words: SW1=0x90, SW2=0x0
+SUCCESS: AID selected
