@@ -1,66 +1,106 @@
 from smartcard.System import readers
 from smartcard.util import toHexString
 
-# ----------------------------
-# CONFIG
-# ----------------------------
-PERSONAL_READER_NAME = "HID Global OMNIKEY 3x21 Smart Card Reader 0"
+USE_SIMULATOR = True   
 
-# Applet AID
-AID = [0xA0, 0x00, 0x00, 0x08, 0x15, 0x03, 0x09, 0x90, 0x02, 0x03, 0x08, 0x02]
+# GlobalPlatform Issuer Security Domain AID
+AID = [0xA0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00]
 
 # SELECT APDU
 SELECT_APDU = [
     0x00,        # CLA
-    0xA4,        # INS (SELECT)
+    0xA4,        # INS
     0x04,        # P1 (select by AID)
     0x00,        # P2
     len(AID)
 ] + AID
 
 
-def main():
-    print("🔹 Searching for smart card readers...")
-# it stores the total available readers    
+# ==========================================================
+# SIMULATOR
+# ==========================================================
+class SimulatedCardConnection:
+    """
+    Simple software smart-card simulator.
+    Simulates SELECT AID behavior only.
+    """
+
+    def __init__(self, supported_aid):
+        self.supported_aid = supported_aid
+
+    def connect(self):
+        print("[SIMULATOR] Card connected")
+
+    def getATR(self):
+        # Fake ATR (for logging only)
+        return [0x3B, 0x90, 0x11, 0x00]
+
+    def transmit(self, apdu):
+        print("[SIMULATOR] APDU received:", toHexString(apdu))
+
+        if len(apdu) < 5:
+            return [], 0x67, 0x00  # Wrong length
+
+        cla, ins, p1, p2, lc = apdu[:5]
+        data = apdu[5:5 + lc]
+
+        # Handle SELECT AID
+        if ins == 0xA4 and p1 == 0x04 and data == self.supported_aid:
+            print("[SIMULATOR] AID selected")
+            return [], 0x90, 0x00
+
+        print("[SIMULATOR] AID not found")
+        return [], 0x6A, 0x82
+
+
+# ==========================================================
+# REAL CARD CONNECTION
+# ==========================================================
+def connect_real_card():
+    print("Searching for PC/SC readers...")
     r = readers()
-# if condition to check avaialble readers
+
     if not r:
-        raise Exception("❌ No smart card readers found")
+        raise Exception("No smart card readers found")
 
     print("Available readers:")
-    selected_reader = None
-# selecting the desired reader
-    for idx, reader in enumerate(r):
-        print(f"[{idx}] {reader}")
-        if PERSONAL_READER_NAME in str(reader):
-            selected_reader = reader
+    for i, reader in enumerate(r):
+        print(f"[{i}] {reader}")
 
-    if selected_reader is None:
-        raise Exception(
-            f"❌ Reader '{PERSONAL_READER_NAME}' not found.\n"
-            "➡️ Check driver, USB connection, or reader name."
-        )
+    # Automatically use the first reader
+    reader = r[0]
+    print(f"\nUsing reader: {reader}")
 
-    print("\n✅ Using reader:", selected_reader)
-
-    # Connect to card
-    connection = selected_reader.createConnection()
+    connection = reader.createConnection()
     connection.connect()
+    return connection
 
-    print("✅ Card connected")
+
+# ==========================================================
+# MAIN
+# ==========================================================
+def main():
+
+    if USE_SIMULATOR:
+        print("Running in SIMULATOR mode")
+        connection = SimulatedCardConnection(AID)
+        connection.connect()
+    else:
+        print("REAL hardware")
+        connection = connect_real_card()
+
     print("ATR:", toHexString(connection.getATR()))
 
-    # Send SELECT APDU
-    print("\n➡️ Sending SELECT APDU:", toHexString(SELECT_APDU))
+    print("\n Sending select command for AID :", toHexString(SELECT_APDU))
     response, sw1, sw2 = connection.transmit(SELECT_APDU)
 
-    print("⬅️ Response Data:", toHexString(response))
-    print(f"⬅️ Status Words: SW1={hex(sw1)}, SW2={hex(sw2)}")
+    print(" Response Data:", toHexString(response))
+    print(f" Status Words: SW1={hex(sw1)}, SW2={hex(sw2)}")
 
     if sw1 == 0x90 and sw2 == 0x00:
-        print("🎉 SUCCESS: Applet selected")
+        print("SUCCESS: AID selected")
     else:
-        print("Applet not selected 6A 82")
+        print("AID not selectable")
 
 
 if __name__ == "__main__":
